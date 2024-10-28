@@ -130,7 +130,7 @@ class ViewController: UIViewController {
         countdownTime = fixedTime
         calculateTime()
         btnStart.setTitle("Start", for: .normal)
-        
+        isStarted = false
         circleLayer.strokeEnd = 1
         
         timeLabel.text = String(format: "%02d:%02d", minute,second)
