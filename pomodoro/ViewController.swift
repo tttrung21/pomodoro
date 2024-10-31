@@ -21,119 +21,59 @@ class ViewController: UIViewController {
         createCircularPath()
         setupButton()
     }
-    
-    func setupLabel(){
+    //Set up
+    private func setupLabel(){
         let labelSize: CGFloat = 100
         timeLabel.frame = CGRect(x: 0, y: 0, width: labelSize, height: labelSize)
         timeLabel.center = view.center
-        
-        //        timeLabel.layer.cornerRadius = timeLabel.frame.width/2
-        //        timeLabel.layer.borderColor = UIColor.systemOrange.cgColor
-        //        timeLabel.layer.borderWidth = 1
-        calculateTime()
-        timeLabel.text = String(format: "%02d:%02d", minute,second)
+        timeLabel.font = UIFont.systemFont(ofSize: 14,weight: .bold)
+        //        calculateTime()
+        timeLabel.text = convertTime(remainingSecond: countdownTime)
     }
     
-    func setupButton(){
+    private func setupButton(){
         btnStart.setTitle("Start", for: .normal)
-        btnStart.titleLabel?.font = .boldSystemFont(ofSize: 24)
+        btnStart.setTitleColor(.black, for: .normal)
+        btnStart.titleLabel?.font = UIFont.systemFont(ofSize: 14,weight: .bold)
         btnStart.layer.cornerRadius = 8
         
         btnReset.setTitle("Reset", for: .normal)
-        btnReset.titleLabel?.font = .boldSystemFont(ofSize: 24)
+        btnReset.setTitleColor(.white, for: .normal)
+        btnReset.layer.borderColor = UIColor.white.cgColor
+        btnReset.layer.borderWidth = 1
+        btnReset.titleLabel?.font = UIFont.systemFont(ofSize: 14,weight: .bold)
         btnReset.layer.cornerRadius = 8
         
+        var configuration = UIButton.Configuration.filled()
+        configuration.contentInsets = NSDirectionalEdgeInsets(top: 4, leading: 2, bottom: 4, trailing: 2)
+        btnStart.configuration = configuration
+        btnReset.configuration = configuration
     }
-    func startAnimation(resume: Bool = false) {
-        let animation = CABasicAnimation(keyPath: "strokeEnd")
-        
-        if resume {
-            // Resume from where it was paused
-            animation.duration = CFTimeInterval(countdownTime)
-            animation.fromValue = 1 - (Double(countdownTime) / Double(fixedTime))
-            animation.toValue = 0
-        } else {
-            // Start from the beginning
-            animation.duration = CFTimeInterval(countdownTime)
-            animation.fromValue = 1
-            animation.toValue = 0
-        }
-        
-        animation.fillMode = .forwards
-        animation.isRemovedOnCompletion = false
-        circleLayer.add(animation, forKey: "strokeEndAnimation")
-        
-        // Gradually change the color from orange to black
-        let colorAnimation = CABasicAnimation(keyPath: "strokeColor")
-        colorAnimation.duration = CFTimeInterval(countdownTime)
-        colorAnimation.fromValue = UIColor.systemOrange.cgColor
-        colorAnimation.toValue = UIColor.black.cgColor
-        colorAnimation.fillMode = .forwards
-        colorAnimation.isRemovedOnCompletion = false
-        circleLayer.add(colorAnimation, forKey: "strokeColorAnimation")
-    }
-    
-    func startClock(resume: Bool = false) {
-        updateTimer()
-        if resume {
-            // Resume the timer
-            timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(updateTimer), userInfo: nil, repeats: true)
-        } else {
-            // Start the timer
-            timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(updateTimer), userInfo: nil, repeats: true)
-            startAnimation(resume: resume)
-        }
-    }
-    func createCircularPath() {
-        // Create a circular path centered on the timeLabel's center
+    //Draw circle
+    private func createCircularPath() {
         let circularPath = UIBezierPath(
             arcCenter: CGPoint(x: view.frame.midX, y: view.frame.midY),
-            radius: 100,
-            startAngle: -90.degreeToRadians,
-            endAngle: 270.degreeToRadians,
+            radius: 50,
+            startAngle: -CGFloat.pi/2,
+            endAngle: 3/2 * CGFloat.pi,
             clockwise: true)
-
-        // Configure the circle layer
         circleLayer.path = circularPath.cgPath
         circleLayer.fillColor = UIColor.clear.cgColor
         circleLayer.strokeColor = UIColor.systemOrange.cgColor
         circleLayer.lineWidth = 1
         circleLayer.strokeEnd = 1
-
-
+        
         view.layer.addSublayer(circleLayer)
     }
-
-
-    @objc func updateTimer(){
-        if countdownTime > 0{
-            countdownTime -= 1
-            calculateTime()
-            timeLabel.text = String(format: "%02d:%02d", minute,second)
-        }
-        else{
-            timer?.invalidate()
-            timeLabel.text = "00:00"
-        }
-    }
-    deinit{
-        timer?.invalidate()
-    }
-    
-    func calculateTime(){
-        minute = (countdownTime % 3600)/60
-        second = countdownTime % 60
-    }
-    
+    //Actions
     @IBAction func reset(_ sender: Any) {
         timer?.invalidate()
         countdownTime = fixedTime
-        calculateTime()
+        //        calculateTime()
         btnStart.setTitle("Start", for: .normal)
         isStarted = false
         circleLayer.strokeEnd = 1
-        
-        timeLabel.text = String(format: "%02d:%02d", minute,second)
+        timeLabel.text = convertTime(remainingSecond: fixedTime)
         circleLayer.removeAllAnimations()
     }
     @IBAction func start(_ sender: Any) {
@@ -143,19 +83,48 @@ class ViewController: UIViewController {
                 isStarted = !isStarted
                 startClock()
             } else  {
-                startClock(resume: true)  // Resume the timer and animation
+                startClock(resume: true)
             }
-            
         }
         else if btnStart.titleLabel?.text == "Pause"{
             btnStart.setTitle("Start", for: .normal)
             timer?.invalidate()
         }
     }
-}
-
-extension Int{
-    var degreeToRadians: CGFloat{
-        return CGFloat(self) * .pi/180
+    //Timer logic
+    private func startClock(resume: Bool = false) {
+        updateTimerCounter()
+        if resume {
+            // Resume the timer
+            timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(updateTimerCounter), userInfo: nil, repeats: true)
+        } else {
+            // Start the timer
+            timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(updateTimerCounter), userInfo: nil, repeats: true)
+        }
+    }
+    @objc func updateTimerCounter(){
+        if countdownTime == 0 {
+            resetCounting()
+            return
+        }
+        countdownTime -= 1
+        updateRingProgress()
+        timeLabel.text = convertTime(remainingSecond: countdownTime)
+    }
+    private func convertTime (remainingSecond : Int) -> String {
+        let minutes : Int = remainingSecond / 60
+        let seconds = remainingSecond % 60
+        return String(format: "%02d:%02d",  minutes, seconds)
+    }
+    //update progress
+    private func updateRingProgress() {
+        let progress = CGFloat(countdownTime) / CGFloat(fixedTime)
+        circleLayer.strokeEnd = progress
+    }
+    private func resetCounting(){
+        timer?.invalidate()
+    }
+    deinit{
+        resetCounting()
     }
 }
